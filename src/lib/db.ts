@@ -76,6 +76,8 @@ const updateSummaryStmt = db.prepare(
 const updateCheckinStmt = db.prepare(
   `UPDATE entries SET checkin = ?, updated = datetime('now') WHERE date = ?`
 );
+const deleteEntryStmt = db.prepare("DELETE FROM entries WHERE date = ?");
+
 const getAllEntryDatesStmt = db.prepare(
   "SELECT date, summary IS NOT NULL AS hasSummary FROM entries ORDER BY date DESC"
 );
@@ -103,11 +105,15 @@ export function upsertEntry(date: string, content: string): void {
   upsertEntryStmt.run(date, content);
 }
 
-export function updateSummary(date: string, summary: string, format: string): void {
+export function deleteEntry(date: string): void {
+  deleteEntryStmt.run(date);
+}
+
+export function updateSummary(date: string, summary: string | null, format: string | null): void {
   updateSummaryStmt.run(summary, format, date);
 }
 
-export function updateCheckin(date: string, checkin: string): void {
+export function updateCheckin(date: string, checkin: string | null): void {
   updateCheckinStmt.run(checkin, date);
 }
 

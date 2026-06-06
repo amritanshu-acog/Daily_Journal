@@ -52,63 +52,116 @@ export default function WeeklyDigest({
     }
   }, [weekStart]);
 
+  const navLinkStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    color: 'var(--accent-text)',
+    textDecoration: 'none',
+    padding: '6px 14px',
+    borderRadius: 'var(--radius-md)',
+    transition: 'all 0.15s ease',
+  };
+
   return (
-    <div className="flex flex-col flex-1 p-6 space-y-6 overflow-y-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100">
-            {weekLabel}
-          </h1>
-          <div className="flex items-center gap-3 mt-2">
-            {days.map((day, i) => (
-              <span
-                key={day.date}
-                className={`text-sm font-medium ${
-                  day.hasEntry
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-zinc-400 dark:text-zinc-600'
-                }`}
-              >
-                {DAY_LABELS[i]}{' '}
-                {day.hasEntry ? (
-                  <span className="text-green-600 dark:text-green-400">✓</span>
-                ) : (
-                  <span className="text-zinc-300 dark:text-zinc-600">—</span>
-                )}
-              </span>
-            ))}
-          </div>
+    <div
+      className="animate-fade-in"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        padding: '32px 28px',
+        gap: 24,
+        overflowY: 'auto',
+      }}
+    >
+      {/* Header */}
+      <div>
+        <h1
+          style={{
+            fontSize: '1.4rem',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.03em',
+            marginBottom: 14,
+          }}
+        >
+          {weekLabel}
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {days.map((day, i) => (
+            <div
+              key={day.date}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-md)',
+                background: day.hasEntry ? 'var(--success-soft)' : 'var(--surface-muted)',
+                border: `1px solid ${day.hasEntry ? 'var(--success)' : 'var(--border-subtle)'}`,
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: day.hasEntry ? 'var(--success-text)' : 'var(--text-muted)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {DAY_LABELS[i]}
+              {day.hasEntry ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <span style={{ fontSize: '0.65rem' }}>—</span>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Generate button */}
       <div>
         {!canGenerate ? (
           <span
             title="Write at least 2 days this week to generate a digest"
-            className="inline-block cursor-not-allowed rounded-lg bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-400 dark:bg-zinc-800"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface-muted)',
+              color: 'var(--text-muted)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'not-allowed',
+              border: '1px solid var(--border-subtle)',
+            }}
           >
-            ✨ Generate Weekly Digest
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+            Generate Weekly Digest
           </span>
         ) : status === 'generating' ? (
-          <span className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white opacity-70">
-            <svg
-              className="h-4 w-4 animate-spin"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, var(--accent), #a855f7)',
+              color: '#ffffff',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              opacity: 0.8,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
             </svg>
             Generating…
           </span>
@@ -116,20 +169,53 @@ export default function WeeklyDigest({
           <button
             type="button"
             onClick={handleGenerate}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, var(--accent), #a855f7)',
+              color: '#ffffff',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+              (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-glow)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+              (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)';
+            }}
           >
-            {status === 'done' ? '↺ Regenerate' : '✨ Generate Weekly Digest'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+            {status === 'done' ? 'Regenerate Digest' : 'Generate Weekly Digest'}
           </button>
         )}
       </div>
 
       {status === 'error' && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="animate-fade-in" style={{ fontSize: '0.85rem', color: 'var(--danger-text)' }}>
           Generation failed —{' '}
           <button
             type="button"
             onClick={handleGenerate}
-            className="underline hover:no-underline"
+            style={{
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              color: 'inherit',
+              background: 'none',
+              border: 'none',
+              fontSize: 'inherit',
+              fontWeight: 600,
+            }}
           >
             Retry
           </button>
@@ -137,8 +223,21 @@ export default function WeeklyDigest({
       )}
 
       {digest && (
-        <div ref={digestRef} className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
-          <div className="prose dark:prose-invert max-w-none text-sm">
+        <div
+          ref={digestRef}
+          className="animate-slide-up"
+          style={{
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            padding: 24,
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div
+            className="prose dark:prose-invert"
+            style={{ maxWidth: 'none', fontSize: '0.88rem', lineHeight: 1.7 }}
+          >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {digest}
             </ReactMarkdown>
@@ -151,23 +250,59 @@ export default function WeeklyDigest({
         </div>
       )}
 
-      <div className="flex items-center gap-4 pt-4 border-t">
+      {/* Week navigation */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          paddingTop: 16,
+          borderTop: '1px solid var(--border-subtle)',
+        }}
+      >
         <Link
           href={`/weekly/${prevMonday}`}
-          className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+          style={navLinkStyle}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--accent-soft)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+          }}
         >
-          ← Previous week
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Previous week
         </Link>
         {isNextDisabled ? (
-          <span className="text-sm text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
-            Next week →
+          <span
+            style={{
+              ...navLinkStyle,
+              color: 'var(--text-muted)',
+              cursor: 'not-allowed',
+            }}
+          >
+            Next week
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </span>
         ) : (
           <Link
             href={`/weekly/${nextMonday}`}
-            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            style={navLinkStyle}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--accent-soft)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+            }}
           >
-            Next week →
+            Next week
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </Link>
         )}
       </div>

@@ -1,32 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Toolbar from './toolbar';
 import SaveIndicator from './save-indicator';
 import TagAutocomplete from './tag-autocomplete';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { getWordAtCursor, replacePartialTag } from '@/lib/markdown';
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'retrying' | 'error';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-function getWordAtCursor(text: string, cursor: number): string | null {
-  const beforeCursor = text.slice(0, cursor);
-  const match = beforeCursor.match(/(?:^|\s)(#([a-zA-Z0-9_-]*))$/);
-  return match ? match[2] : null;
-}
-
-function replacePartialTag(text: string, cursor: number, fullTag: string): string {
-  const beforeCursor = text.slice(0, cursor);
-  const afterCursor = text.slice(cursor);
-  const match = beforeCursor.match(/(^|\s)(#[a-zA-Z0-9_-]*)$/);
-  if (!match) return text;
-  const replaceStart = match.index! + match[1]!.length;
-  return text.slice(0, replaceStart) + `#${fullTag} ` + afterCursor;
-}
-
-function measureCursorPosition(ta: HTMLTextAreaElement): { left: number; top: number } | undefined {
+function measureCursorPosition(ta: HTMLTextAreaElement) {
   const pos = ta.selectionStart;
-  if (pos === undefined) return undefined;
   const textBefore = ta.value.slice(0, pos);
   const mirror = document.createElement('div');
   const cs = window.getComputedStyle(ta);
@@ -55,7 +40,53 @@ function measureCursorPosition(ta: HTMLTextAreaElement): { left: number; top: nu
   };
 }
 
-export default function Editor({ date, initialContent, loading = false, onWordCountChange }: { date: string; initialContent: string; loading?: boolean; onWordCountChange?: (count: number) => void }) {
+function toggleCheckboxInMarkdown(markdown: string, targetIndex: number): string {
+  const lines = markdown.split('\n');
+  let checkboxCount = 0;
+  let inCodeBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.trim().startsWith('```') || line.trim().startsWith('~~~')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      continue;
+    }
+
+    const match = line.match(/^([ \t]*(?:>\s*)*\s*(?:[-*+]|\d+\.)\s+\[)([ xX])(\])/);
+    if (match) {
+      if (checkboxCount === targetIndex) {
+        const checked = match[2];
+        const isChecked = checked.toLowerCase() === 'x';
+        const newChecked = isChecked ? ' ' : 'x';
+
+        const bracketIndex = line.indexOf('[');
+        if (bracketIndex !== -1) {
+          lines[i] = line.substring(0, bracketIndex + 1) + newChecked + line.substring(bracketIndex + 2);
+        }
+        break;
+      }
+      checkboxCount++;
+    }
+  }
+  return lines.join('\n');
+}
+
+export default function Editor({
+  date,
+  initialContent,
+  loading = false,
+  onWordCountChange,
+}: {
+  date: string;
+  initialContent: string;
+  loading?: boolean;
+  onWordCountChange?: (count: number) => void;
+}) {
   const [content, setContent] = useState(initialContent);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isPreview, setIsPreview] = useState(false);
@@ -69,6 +100,16 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
   const [tagSelectedIndex, setTagSelectedIndex] = useState(0);
   const [tagPosition, setTagPosition] = useState<{ left: number; top: number } | undefined>(undefined);
   const [showFirstTagTip, setShowFirstTagTip] = useState(false);
+
+  // Undo/Redo history stack management
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+
+  useEffect(() => {
+    historyRef.current = [initialContent || ''];
+    historyIndexRef.current = 0;
+    setContent(initialContent || '');
+  }, [initialContent]);
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
@@ -91,6 +132,7 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
         if (!res.ok) throw new Error('Save failed');
         setSaveStatus('saved');
         setSavedTime(new Date());
+        window.dispatchEvent(new CustomEvent('entry-saved', { detail: { date, content: text } }));
       } catch {
         setSaveStatus('error');
       }
@@ -98,15 +140,54 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
     [date]
   );
 
+  const pushHistory = useCallback((newContent: string) => {
+    const nextHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+    if (nextHistory[nextHistory.length - 1] === newContent) return;
+    nextHistory.push(newContent);
+    if (nextHistory.length > 100) nextHistory.shift();
+    historyRef.current = nextHistory;
+    historyIndexRef.current = nextHistory.length - 1;
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const prevContent = historyRef.current[historyIndexRef.current];
+      setContent(prevContent);
+      save(prevContent);
+      const wc = prevContent.trim() ? prevContent.trim().split(/\s+/).length : 0;
+      onWordCountChange?.(wc);
+    }
+  }, [save, onWordCountChange]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const nextContent = historyRef.current[historyIndexRef.current];
+      setContent(nextContent);
+      save(nextContent);
+      const wc = nextContent.trim() ? nextContent.trim().split(/\s+/).length : 0;
+      onWordCountChange?.(wc);
+    }
+  }, [save, onWordCountChange]);
+
   const handleChange = useCallback(
-    (value: string) => {
+    (value: string, isProgrammatic = false) => {
       setContent(value);
       const wc = value.trim() ? value.trim().split(/\s+/).length : 0;
       onWordCountChange?.(wc);
+      
+      if (isProgrammatic) {
+        pushHistory(value);
+      }
+      
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => save(value), 1500);
+      debounceRef.current = setTimeout(() => {
+        save(value);
+        pushHistory(value);
+      }, 1500);
     },
-    [save, onWordCountChange]
+    [save, onWordCountChange, pushHistory]
   );
 
   useEffect(() => {
@@ -164,7 +245,7 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
       if (!ta) return;
       const cursor = ta.selectionStart;
       const newContent = replacePartialTag(content, cursor, tag);
-      handleChange(newContent);
+      handleChange(newContent, true);
       setTagAutocompleteOpen(false);
       setShowFirstTagTip(false);
       requestAnimationFrame(() => {
@@ -216,7 +297,7 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
           : fallback;
         const newContent =
           content.slice(0, start) + replacement + content.slice(end);
-        handleChange(newContent);
+        handleChange(newContent, true);
         requestAnimationFrame(() => {
           el.focus();
           const cursor = start + replacement.length;
@@ -228,7 +309,7 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
         e.preventDefault();
         const newContent =
           content.slice(0, start) + text + content.slice(end);
-        handleChange(newContent);
+        handleChange(newContent, true);
         requestAnimationFrame(() => {
           el.focus();
           const cursor = start + text.length;
@@ -236,7 +317,17 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
         });
       };
 
-      if (isCtrl && e.key === '/') {
+      if (isCtrl && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if (isCtrl && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      } else if (isCtrl && e.key === '/') {
         e.preventDefault();
         setIsPreview((p) => !p);
       } else if (isCtrl && e.key === 'b') {
@@ -262,6 +353,8 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
       filteredTags,
       tagSelectedIndex,
       selectTag,
+      handleUndo,
+      handleRedo,
     ]
   );
 
@@ -296,49 +389,87 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full relative animate-pulse">
-        <div className="flex items-center gap-1 border-b px-2 py-1">
-          <div className="h-6 w-8 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-6 w-6 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-6 w-6 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-6 w-12 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-6 w-12 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-6 w-12 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="flex-1" />
-          <div className="h-6 w-16 rounded bg-zinc-200 dark:bg-zinc-700" />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-subtle)', padding: '6px 12px' }}>
+          {[32, 28, 28, 1, 60, 48, 56].map((w, i) => (
+            <div key={i} className="animate-shimmer" style={{ height: 28, width: w, borderRadius: 'var(--radius-sm)' }} />
+          ))}
+          <div style={{ flex: 1 }} />
+          <div className="animate-shimmer" style={{ height: 28, width: 72, borderRadius: 'var(--radius-sm)' }} />
         </div>
-        <div className="flex-1 p-4 space-y-3">
-          <div className="h-4 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-4 w-1/2 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-4 w-5/6 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-4 w-2/3 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-4 w-4/5 rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[75, 50, 85, 60, 70].map((w, i) => (
+            <div key={i} className="animate-shimmer" style={{ height: 14, width: `${w}%`, borderRadius: 'var(--radius-sm)' }} />
+          ))}
         </div>
-        <div className="flex items-center justify-between px-4 pb-2">
-          <div className="h-3 w-24 rounded bg-zinc-200 dark:bg-zinc-700" />
-          <div className="h-3 w-16 rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px' }}>
+          <div className="animate-shimmer" style={{ height: 12, width: 100, borderRadius: 'var(--radius-sm)' }} />
+          <div className="animate-shimmer" style={{ height: 12, width: 60, borderRadius: 'var(--radius-sm)' }} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <Toolbar
         editorRef={textareaRef}
         content={content}
-        onChange={handleChange}
+        onChange={(val) => handleChange(val, true)}
         onTogglePreview={() => setIsPreview((p) => !p)}
         isPreview={isPreview}
       />
       {isPreview ? (
-        <div className="flex-1 overflow-auto p-4 prose dark:prose-invert max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <div
+          className="prose dark:prose-invert animate-fade-in"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '24px 28px',
+            maxWidth: 'none',
+            fontSize: '0.95rem',
+            lineHeight: 1.7,
+          }}
+        >
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              input: ({ disabled, ...props }) => {
+                if (props.type === 'checkbox') {
+                  return (
+                    <input
+                      type="checkbox"
+                      checked={props.checked}
+                      onChange={(e) => {
+                        const container = (e.currentTarget.closest('.prose') ||
+                          e.currentTarget.parentElement) as HTMLElement | null;
+                        if (!container) return;
+                        const all = container.querySelectorAll<HTMLInputElement>(
+                          'input[type="checkbox"]'
+                        );
+                        const clickIndex = Array.from(all).indexOf(e.currentTarget);
+                        if (clickIndex === -1) return;
+                        const newContent = toggleCheckboxInMarkdown(content, clickIndex);
+                        handleChange(newContent, true);
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        accentColor: 'var(--accent)',
+                        marginRight: 6,
+                        verticalAlign: 'middle',
+                      }}
+                    />
+                  );
+                }
+                return <input {...props} disabled={disabled} />;
+              }
+            }}
+          >
             {content || '*No content yet*'}
           </ReactMarkdown>
         </div>
       ) : (
-        <div className="flex-1 relative">
+        <div style={{ flex: 1, position: 'relative' }}>
           <textarea
             ref={textareaRef}
             value={content}
@@ -349,8 +480,21 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
             onClick={handleTextareaClick}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="w-full h-full resize-y border-0 p-4 outline-none font-mono text-sm bg-transparent dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-            placeholder={`What did you work on today?\n\n- [ ] Add a todo like this\n- [x] Check off a completed task like this\nTag a project with a hashtag: #project-name\n\nOr just write freely — notes, decisions, blockers, wins.`}
+            style={{
+              width: '100%',
+              height: '100%',
+              resize: 'none',
+              border: 'none',
+              padding: '20px 28px',
+              outline: 'none',
+              fontFamily: 'var(--font-geist-mono), ui-monospace, monospace',
+              fontSize: '0.88rem',
+              lineHeight: 1.75,
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              caretColor: 'var(--accent)',
+            }}
+            placeholder={`What did you work on today?\n\n- [ ] Add a todo like this\n- [x] Check off a completed task\n#tag a project with a hashtag\n\nOr just write freely — notes, decisions, blockers, wins.`}
           />
           {tagAutocompleteOpen && (
             <>
@@ -366,24 +510,52 @@ export default function Editor({ date, initialContent, loading = false, onWordCo
               />
               {showFirstTagTip && (
                 <div
-                  className="fixed z-50 px-3 py-2 text-xs rounded-lg bg-blue-600 text-white shadow-lg pointer-events-none"
+                  className="animate-fade-in"
                   style={{
+                    position: 'fixed',
+                    zIndex: 50,
+                    padding: '8px 14px',
+                    fontSize: '0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--accent)',
+                    color: '#ffffff',
+                    boxShadow: 'var(--shadow-lg)',
+                    pointerEvents: 'none',
                     left: tagPosition ? tagPosition.left + 8 : 0,
                     top: tagPosition ? tagPosition.top + 24 : 0,
                   }}
                 >
                   Tagging a project &mdash; it&apos;ll appear in your sidebar.
-                  <div className="absolute -bottom-1 left-4 w-2 h-2 bg-blue-600 rotate-45" />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: -4,
+                      left: 16,
+                      width: 8,
+                      height: 8,
+                      background: 'var(--accent)',
+                      transform: 'rotate(45deg)',
+                    }}
+                  />
                 </div>
               )}
             </>
           )}
         </div>
       )}
-      <div className="flex items-center justify-between px-4 pb-2">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 20px 10px',
+          borderTop: '1px solid var(--border-subtle)',
+          background: 'var(--surface)',
+        }}
+      >
         <SaveIndicator status={saveStatus} savedTime={savedTime} />
         {!isPreview && (
-          <span className="text-xs text-zinc-400">
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.02em' }}>
             {wordCount} word{wordCount !== 1 ? 's' : ''}
           </span>
         )}

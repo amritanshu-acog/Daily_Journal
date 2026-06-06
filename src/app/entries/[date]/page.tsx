@@ -40,17 +40,48 @@ export default async function EntryPage({
   const isPastNoEntry = date < todayString() && !entry;
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <DateNav date={date} streak={streak} />
       {!isToday(date) && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+        <div
+          className="animate-fade-in"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--warning-soft)',
+            borderBottom: '1px solid var(--warning)',
+            padding: '10px 20px',
+            fontSize: '0.82rem',
+            fontWeight: 500,
+            color: 'var(--warning-text)',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
           Viewing {formatDisplay(date)} · edits will update that day&apos;s entry
         </div>
       )}
       {isPastNoEntry ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-zinc-400 dark:text-zinc-500 text-lg">
-            No entry for this day.
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+          }}
+        >
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', fontWeight: 500 }}>
+            No entry for this day
           </p>
         </div>
       ) : (

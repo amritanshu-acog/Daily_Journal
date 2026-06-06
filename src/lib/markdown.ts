@@ -44,3 +44,26 @@ export function extractAllTasks(content: string): { checked: string[]; unchecked
   }
   return { checked, unchecked };
 }
+
+export function getWordAtCursor(text: string, cursor: number): string | null {
+  const sub = text.slice(0, cursor);
+  const hashIdx = sub.lastIndexOf('#');
+  if (hashIdx === -1) return null;
+  
+  const tagPart = sub.slice(hashIdx + 1);
+  if (/\s/.test(tagPart)) return null;
+  
+  if (hashIdx > 0 && !/\s/.test(sub[hashIdx - 1])) return null;
+  
+  return tagPart;
+}
+
+export function replacePartialTag(text: string, cursor: number, tag: string): string {
+  const sub = text.slice(0, cursor);
+  const hashIdx = sub.lastIndexOf('#');
+  if (hashIdx === -1) return text;
+  
+  const before = text.slice(0, hashIdx);
+  const after = text.slice(cursor);
+  return `${before}#${tag} ${after}`;
+}

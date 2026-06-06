@@ -117,29 +117,41 @@ export default function CalendarHeatmap({ entries, activeTags }: Props) {
     [activeTags]
   );
 
-  const cellClass = useCallback(
-    (cell: DayCell) => {
+  const getCellStyle = useCallback(
+    (cell: DayCell): React.CSSProperties => {
+      const base: React.CSSProperties = {
+        width: 12,
+        height: 12,
+        borderRadius: 3,
+        border: 'none',
+        cursor: cell.inRange ? 'pointer' : 'default',
+        transition: 'all 0.1s ease',
+        padding: 0,
+      };
+
+      if (!cell.inRange) return { ...base, background: 'transparent' };
+
       const filtered = isFiltered(cell);
-      if (!cell.inRange) return 'bg-transparent w-3 h-3';
-      if (filtered) return 'bg-zinc-200 dark:bg-zinc-700 opacity-[0.15] w-3 h-3 rounded-sm';
+      if (filtered) return { ...base, background: 'var(--surface-muted)', opacity: 0.15 };
 
-      const cls = ['w-3 h-3 rounded-sm'];
-      if (noData) {
-        cls.push('bg-gray-200 dark:bg-gray-700 animate-pulse');
-      } else {
-        const isWeekend = cell.dayOfWeek === 0 || cell.dayOfWeek === 6;
-        if (!cell.entry) {
-          cls.push('bg-gray-100 dark:bg-gray-800');
-        } else if (cell.entry.hasSummary) {
-          cls.push('bg-green-500 dark:bg-green-500');
-        } else {
-          cls.push('bg-green-300 dark:bg-green-700');
-        }
-        if (isWeekend) cls.push('opacity-70');
+      if (noData) return { ...base, background: 'var(--surface-muted)' };
+
+      const isWeekend = cell.dayOfWeek === 0 || cell.dayOfWeek === 6;
+
+      let bg = 'var(--surface-muted)';
+      if (cell.entry) {
+        bg = cell.entry.hasSummary ? '#22c55e' : '#86efac';
       }
-      if (isToday(parseISO(cell.date))) cls.push('ring-2 ring-blue-400');
 
-      return cls.join(' ');
+      const isTodayCell = isToday(parseISO(cell.date));
+
+      return {
+        ...base,
+        background: bg,
+        opacity: isWeekend ? 0.6 : 1,
+        outline: isTodayCell ? '2px solid var(--accent)' : 'none',
+        outlineOffset: 1,
+      };
     },
     [isFiltered, noData]
   );
@@ -166,36 +178,67 @@ export default function CalendarHeatmap({ entries, activeTags }: Props) {
   }, []);
 
   return (
-    <div className="space-y-2" data-heatmap>
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-zinc-500">Heatmap</h2>
+    <div data-heatmap style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          Activity
+        </h2>
         <button
           onClick={() => setRange((r) => (r === '3months' ? 'year' : '3months'))}
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            color: 'var(--accent-text)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: 'var(--radius-sm)',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--accent-soft)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+          }}
         >
           {range === '3months' ? 'This year' : 'Last 3 months'}
         </button>
       </div>
 
-      <div className="relative">
-        <div className="flex gap-px">
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 1, marginBottom: 2 }}>
           {monthLabels.map((m) => (
             <div
               key={m.label}
-              className="text-[10px] text-zinc-400 leading-tight"
-              style={{ width: `${m.index * 16}px`, marginLeft: m.index === 0 ? 0 : undefined }}
+              style={{
+                fontSize: '9px',
+                color: 'var(--text-muted)',
+                fontWeight: 500,
+                width: `${m.index * 16}px`,
+                marginLeft: m.index === 0 ? 0 : undefined,
+              }}
             >
               {m.label}
             </div>
           ))}
         </div>
-        <div className="flex gap-px mt-0.5">
+        <div style={{ display: 'flex', gap: 2 }}>
           {weeks.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-px">
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {week.map((cell) => (
                 <button
                   key={cell.date}
-                  className={cellClass(cell)}
+                  style={getCellStyle(cell)}
                   onMouseEnter={(e) => handleMouseEnter(e, cell)}
                   onMouseLeave={handleMouseLeave}
                   onClick={() => cell.inRange && router.push(`/entries/${cell.date}`)}
@@ -208,19 +251,47 @@ export default function CalendarHeatmap({ entries, activeTags }: Props) {
 
         {tooltip && (
           <div
-            className="absolute z-50 px-2 py-1 text-xs rounded bg-zinc-800 text-white whitespace-nowrap pointer-events-none shadow-lg"
-            style={{ left: tooltip.x, top: tooltip.y, transform: 'translateX(-50%)' }}
+            className="animate-fade-in"
+            style={{
+              position: 'absolute',
+              zIndex: 50,
+              padding: '5px 10px',
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--text-primary)',
+              color: 'var(--background)',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              boxShadow: 'var(--shadow-lg)',
+              left: tooltip.x,
+              top: tooltip.y,
+              transform: 'translateX(-50%)',
+            }}
           >
             {tooltipText(tooltip.date, tooltip.entry)}
           </div>
         )}
       </div>
 
-      <div className="text-sm font-medium">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: '0.82rem',
+          fontWeight: 600,
+        }}
+      >
         {streak > 0 ? (
-          <span>🔥 {streak}-day streak</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--warning-text)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 23c-3.866 0-7-2.686-7-6 0-2.418 1.466-4.505 3-6.282V8c0-.552.448-1 1-1s1 .448 1 1v1.5c.624-.538 1.3-.998 2-1.37V4c0-.552.448-1 1-1s1 .448 1 1v3.313c.363-.072.69-.129 1-.184V2c0-.552.448-1 1-1s1 .448 1 1v5.5c.69.318 1.376.778 2 1.316V7c0-.552.448-1 1-1s1 .448 1 1v3.718C21.534 12.495 23 14.582 23 17c0 3.314-3.134 6-7 6h-4z" />
+            </svg>
+            {streak}-day streak
+          </span>
         ) : (
-          <span className="text-zinc-400">
+          <span style={{ color: 'var(--text-muted)' }}>
             {noData ? 'Your streak starts today' : 'Start your streak today'}
           </span>
         )}

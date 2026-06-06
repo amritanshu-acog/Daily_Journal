@@ -27,7 +27,8 @@ export async function POST(
     const result = await generate(buildPrompt("checkin", entry.content));
     updateCheckin(date, result);
     return NextResponse.json({ checkin: result });
-  } catch {
+  } catch (err) {
+    console.error('[checkin] AI generation error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "Generation failed" }, { status: 500 });
   }
 }

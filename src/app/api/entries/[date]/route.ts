@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getEntry, upsertEntry, getSkippedTasks, rebuildTags } from "@/lib/db";
+import { getEntry, upsertEntry, deleteEntry, updateSummary, getSkippedTasks, rebuildTags } from "@/lib/db";
 import { extractTags, extractUncheckedTasks } from "@/lib/markdown";
 
 function getPreviousDate(dateStr: string): string {
@@ -37,10 +37,22 @@ export async function PUT(
   const { date } = await params;
   const { content } = (await request.json()) as { content: string };
 
-  upsertEntry(date, content);
+  const currentEntry = getEntry(date);
 
-  const tags = extractTags(content);
-  rebuildTags(date, tags);
+  if (!content.trim()) {
+    if (!currentEntry || !currentEntry.checkin) {
+      deleteEntry(date);
+      rebuildTags(date, []);
+    } else {
+      upsertEntry(date, "");
+      updateSummary(date, null, null);
+      rebuildTags(date, []);
+    }
+  } else {
+    upsertEntry(date, content);
+    const tags = extractTags(content);
+    rebuildTags(date, tags);
+  }
 
   return NextResponse.json({ ok: true });
 }

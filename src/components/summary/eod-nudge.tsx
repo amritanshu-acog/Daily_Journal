@@ -23,8 +23,25 @@ export default function EodNudge({
   if (!(isToday && wordCount >= 50 && !hasSummary && hour >= 16)) return null;
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-      It&apos;s after 4 PM — ready to wrap up? ✨
+    <div
+      className="animate-fade-in"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--warning)',
+        background: 'var(--warning-soft)',
+        padding: '12px 16px',
+        fontSize: '0.85rem',
+        fontWeight: 500,
+        color: 'var(--warning-text)',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+      It&apos;s after 4 PM — ready to wrap up?
     </div>
   );
 }

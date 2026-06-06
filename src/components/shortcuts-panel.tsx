@@ -3,16 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const SHORTCUTS = [
-  { keys: 'Ctrl+B', action: 'Bold selected text' },
-  { keys: 'Ctrl+I', action: 'Italic selected text' },
-  { keys: 'Ctrl+`', action: 'Inline code' },
-  { keys: 'Ctrl+Shift+C', action: 'Insert checkbox' },
-  { keys: 'Ctrl+Shift+T', action: 'Insert timestamp' },
-  { keys: 'Ctrl+/', action: 'Toggle preview' },
-  { keys: 'Ctrl+Enter', action: 'Generate summary' },
+  { keys: '⌘B', action: 'Bold selected text' },
+  { keys: '⌘I', action: 'Italic selected text' },
+  { keys: '⌘`', action: 'Inline code' },
+  { keys: '⌘⇧C', action: 'Insert checkbox' },
+  { keys: '⌘⇧T', action: 'Insert timestamp' },
+  { keys: '⌘/', action: 'Toggle preview' },
+  { keys: '⌘↵', action: 'Generate summary' },
   { keys: 'T', action: 'Jump to today' },
   { keys: '?', action: 'Open this panel' },
-  { keys: 'Escape', action: 'Close any open panel' },
+  { keys: 'Esc', action: 'Close any open panel' },
 ];
 
 export default function ShortcutsPanel() {
@@ -67,37 +67,115 @@ export default function ShortcutsPanel() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+      }}
       onClick={closePanel}
     >
       <div
-        className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+        className="animate-scale-in"
+        style={{
+          background: 'var(--surface-elevated)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-xl)',
+          maxWidth: 460,
+          width: '100%',
+          margin: '0 16px',
+          overflow: 'hidden',
+          border: '1px solid var(--border)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
-          <h2 className="text-lg font-semibold">Keyboard Shortcuts</h2>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '18px 22px',
+            borderBottom: '1px solid var(--border-subtle)',
+          }}
+        >
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Keyboard Shortcuts
+          </h2>
           <button
             onClick={closePanel}
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xl leading-none"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-tertiary)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)';
+            }}
           >
-            ✕
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
-        <div className="px-5 py-4">
-          <table className="w-full text-sm">
-            <tbody>
-              {SHORTCUTS.map((s) => (
-                <tr key={s.keys} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                  <td className="py-2 pr-4">
-                    <kbd className="inline-block rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-xs">
-                      {s.keys}
-                    </kbd>
-                  </td>
-                  <td className="py-2 text-zinc-600 dark:text-zinc-400">{s.action}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ padding: '8px 14px' }}>
+          {SHORTCUTS.map((s) => (
+            <div
+              key={s.keys}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 8px',
+                borderBottom: '1px solid var(--border-subtle)',
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                {s.action}
+              </span>
+              <kbd
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-muted)',
+                  fontFamily: 'var(--font-geist-mono), ui-monospace, monospace',
+                  fontSize: '0.72rem',
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  minWidth: 28,
+                  textAlign: 'center',
+                  boxShadow: '0 1px 0 var(--border)',
+                }}
+              >
+                {s.keys}
+              </kbd>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '12px 22px', borderTop: '1px solid var(--border-subtle)' }}>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+            Press <kbd style={{ padding: '1px 5px', borderRadius: 3, border: '1px solid var(--border)', background: 'var(--surface-muted)', fontSize: '0.68rem' }}>?</kbd> again to close
+          </p>
         </div>
       </div>
     </div>

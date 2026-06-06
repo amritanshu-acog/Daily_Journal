@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Daily Journal",
-  description: "A daily journaling app",
+  description: "A beautifully crafted daily journaling app for developers",
 };
 
 export default function RootLayout({
@@ -36,7 +36,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -45,9 +45,9 @@ export default function RootLayout({
         >
           <OfflineDetector />
           <Header />
-          <div className="flex flex-1">
+          <div className="flex flex-1 overflow-hidden">
             <Sidebar todayDate={today} />
-            <main className="flex-1 min-w-0">{children}</main>
+            <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>
           </div>
           <GlobalShortcuts />
           <ShortcutsPanel />

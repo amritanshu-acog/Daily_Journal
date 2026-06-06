@@ -29,25 +29,47 @@ export default function TagAutocomplete({
 
   return (
     <div
-      className="fixed z-50 min-w-[160px] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-xl overflow-hidden"
-      style={style}
+      className="animate-scale-in"
+      style={{
+        position: 'fixed',
+        zIndex: 50,
+        minWidth: 180,
+        background: 'var(--surface-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-xl)',
+        overflow: 'hidden',
+        ...style,
+      }}
     >
-      <ul className="py-1 max-h-48 overflow-y-auto">
+      <ul style={{ padding: '4px', maxHeight: 200, overflowY: 'auto', listStyle: 'none', margin: 0 }}>
         {filtered.map((tag, i) => (
           <li key={tag}>
             <button
               type="button"
-              className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                i === selectedIndex
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                  : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700'
-              }`}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '7px 12px',
+                fontSize: '0.82rem',
+                fontWeight: i === selectedIndex ? 500 : 400,
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.1s ease',
+                background: i === selectedIndex ? 'var(--accent-soft)' : 'transparent',
+                color: i === selectedIndex ? 'var(--accent-text)' : 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onSelect(tag);
               }}
             >
-              #{tag}
+              <span style={{ color: i === selectedIndex ? 'var(--accent)' : 'var(--text-muted)', fontSize: '0.75rem' }}>#</span>
+              {tag}
             </button>
           </li>
         ))}
