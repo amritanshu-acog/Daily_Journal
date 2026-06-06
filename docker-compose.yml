@@ -1,0 +1,77 @@
+services:
+
+  # ── Next.js Application ────────────────────────────────────────────────────
+  # Port 3000 is intentionally NOT exposed to the host.
+  # nginx communicates with this container via the internal Docker network.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: journal_app
+    restart: unless-stopped
+
+    # Runtime environment — copy .env to the project root on the server
+    env_file:
+      - .env
+
+    volumes:
+      # Persist the SQLite database across rebuilds / restarts
+      - journal_data:/app/data
+
+    networks:
+      - journal_net
+
+    # No `ports:` block — the app is NOT reachable from outside Docker
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/entries || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── nginx Reverse Proxy ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: journal_nginx
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      # nginx config
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+      # SSL certificates — place your wildcard / domain certs here on the host:
+      #   /etc/ssl/aganitha/fullchain.pem
+      #   /etc/ssl/aganitha/privkey.pem
+      - /etc/ssl/aganitha:/etc/nginx/certs:ro
+
+      # Static Next.js build files served directly by nginx (faster)
+      - journal_static:/app/static:ro
+
+      # Certbot webroot (if you ever need to renew via Let's Encrypt)
+      - certbot_webroot:/var/www/certbot:ro
+
+    networks:
+      - journal_net
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  journal_data:
+    driver: local
+  journal_static:
+    driver: local
+  certbot_webroot:
+    driver: local
+
+# ── Internal network (no host exposure for the app) ───────────────────────────
+networks:
+  journal_net:
+    driver: bridge

@@ -46,3 +46,7 @@ data/
 
 # exclude .env from tracking (contains API key)
 .env
+
+# docker / deployment — these live on the server, not in git
+*.pem
+ssl/
