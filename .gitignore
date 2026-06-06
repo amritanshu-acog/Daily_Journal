@@ -43,3 +43,6 @@ next-env.d.ts
 
 # daily journal
 data/
+
+# exclude .env from tracking (contains API key)
+.env
