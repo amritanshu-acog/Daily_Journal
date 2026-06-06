@@ -24,21 +24,13 @@ services:
 
     # No `ports:` block — the app is NOT reachable from outside Docker
 
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/entries || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
   # ── nginx Reverse Proxy ────────────────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
     container_name: journal_nginx
     restart: unless-stopped
     depends_on:
-      app:
-        condition: service_healthy
+      - app
 
     ports:
       - "80:80"
@@ -53,11 +45,6 @@ services:
       #   /etc/ssl/aganitha/privkey.pem
       - /etc/ssl/aganitha:/etc/nginx/certs:ro
 
-      # Static Next.js build files served directly by nginx (faster)
-      - journal_static:/app/static:ro
-
-      # Certbot webroot (if you ever need to renew via Let's Encrypt)
-      - certbot_webroot:/var/www/certbot:ro
 
     networks:
       - journal_net
@@ -65,10 +52,6 @@ services:
 # ── Named volumes ──────────────────────────────────────────────────────────────
 volumes:
   journal_data:
-    driver: local
-  journal_static:
-    driver: local
-  certbot_webroot:
     driver: local
 
 # ── Internal network (no host exposure for the app) ───────────────────────────

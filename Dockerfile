@@ -15,8 +15,6 @@ RUN npm install --frozen-lockfile --ignore-scripts=false
 # ─── Stage 2: Build the Next.js app ──────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache libc6-compat python3 make g++
-
 WORKDIR /app
 
 # Copy installed node_modules from deps stage
