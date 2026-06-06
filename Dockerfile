@@ -2,9 +2,8 @@
 FROM node:20-alpine AS deps
 
 # better-sqlite3 needs Python + build tools to compile native bindings
-RUN apk add --no-cache libc6-compat python3 make g++ curl && \
-    curl -fsSL https://bun.sh/install | bash && \
-    ln -s /root/.bun/bin/bun /usr/local/bin/bun
+RUN apk add --no-cache libc6-compat python3 make g++ && \
+    npm install -g bun
 
 WORKDIR /app
 
