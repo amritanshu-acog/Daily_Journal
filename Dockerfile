@@ -2,15 +2,15 @@
 FROM node:20-alpine AS deps
 
 # better-sqlite3 needs Python + build tools to compile native bindings
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 make g++ curl && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun
 
 WORKDIR /app
 
-# Copy lockfiles and install ONLY production + build deps
 COPY package.json bun.lock ./
 
-# Use npm (universally available); bun.lock is kept for reference only
-RUN npm install --frozen-lockfile --ignore-scripts=false
+RUN bun install --frozen-lockfile
 
 # ─── Stage 2: Build the Next.js app ──────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -27,7 +27,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN npm run build
+RUN bun run build
 
 # ─── Stage 3: Minimal production image ───────────────────────────────────────
 FROM node:20-alpine AS runner
