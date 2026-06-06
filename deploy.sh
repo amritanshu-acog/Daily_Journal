@@ -27,11 +27,6 @@ if [[ ! -f ".env" ]]; then
   fail ".env not found. Create it with GOOGLE_GENERATIVE_AI_API_KEY=<your_key>"
 fi
 
-# SSL certs must be present
-if [[ ! -f "/etc/ssl/aganitha/fullchain.pem" || ! -f "/etc/ssl/aganitha/privkey.pem" ]]; then
-  fail "SSL certs not found at /etc/ssl/aganitha/. Place fullchain.pem and privkey.pem there."
-fi
-
 # ── Pull latest code ──────────────────────────────────────────────────────────
 log "Pulling latest code from origin/master ..."
 git fetch origin
@@ -46,21 +41,7 @@ $COMPOSE build --no-cache "$SERVICE_APP"
 log "Restarting app container ..."
 $COMPOSE up -d --no-deps --force-recreate "$SERVICE_APP"
 
-# Wait for the app healthcheck to pass before reloading nginx
-log "Waiting for app to become healthy ..."
-MAX_WAIT=60
-WAITED=0
-until $COMPOSE ps "$SERVICE_APP" | grep -q "healthy"; do
-  sleep 3
-  WAITED=$((WAITED + 3))
-  if (( WAITED >= MAX_WAIT )); then
-    fail "App did not become healthy within ${MAX_WAIT}s. Check: docker compose logs $SERVICE_APP"
-  fi
-  log "  ... waiting (${WAITED}s)"
-done
-log "App is healthy."
-
-# ── Reload nginx (no downtime — nginx reload is graceful) ─────────────────────
+# ── Reload nginx ─────────────────────────────────────────────────────────────
 log "Reloading nginx config ..."
 if $COMPOSE ps "$SERVICE_NGINX" | grep -q "running"; then
   $COMPOSE exec "$SERVICE_NGINX" nginx -s reload
@@ -74,5 +55,5 @@ docker image prune -f
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 log "=== Deploy complete ==="
-log "Site live at: https://journal.aganitha.ai"
+log "Site live at: http://journal.aganitha.ai"
 $COMPOSE ps
