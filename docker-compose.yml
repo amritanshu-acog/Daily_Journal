@@ -10,6 +10,10 @@ services:
       target: runner
     container_name: journal_app
     restart: unless-stopped
+    labels:
+      description: "Daily Journal"
+      user: "amritanshu"
+      project: "daily-journal"
 
     # Runtime environment — copy .env to the project root on the server
     env_file:
@@ -29,6 +33,10 @@ services:
     image: nginx:1.27-alpine
     container_name: journal_nginx
     restart: unless-stopped
+    labels:
+      description: "Daily Journal nginx"
+      user: "amritanshu"
+      project: "daily-journal"
     depends_on:
       - app
 
